@@ -52,7 +52,7 @@ public class CrossfadeController : MonoBehaviour
             UIManager.CurrentLevelName = levels[UIManager.CurrentLevelIndex].name;
         }
 
-        SceneManager.LoadScene(2);
+        SceneManager.LoadScene(1);
     }
 
     private void OnDestroy()
