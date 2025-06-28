@@ -66,13 +66,12 @@ public class GridManager : MonoBehaviour
         PositionCamera();
         
         CrossfadeController.OnCrossfadeStarted += OnCrossfadeStarted;
-        
-        Debug.Log($"Number of players in scene: {FindObjectsOfType<PlayerMovement>().Length}");
     }
 
     private void OnDestroy()
     {
         CrossfadeController.OnCrossfadeStarted -= OnCrossfadeStarted;
+        PlayerMovement.OnPlayerMoved -= OnPlayerMoved;
     }
 
     // GRID GENERATION

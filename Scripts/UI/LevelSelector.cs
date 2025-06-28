@@ -19,8 +19,12 @@ public class LevelSelector : MonoBehaviour
             int index = i;
             
             GameObject levelButton = Instantiate(buttonPrefab, transform);
+            
             var text = levelButton.GetComponentInChildren<TextMeshProUGUI>();
             text.text = (i + 1).ToString();
+
+            var checkmark = levelButton.transform.GetChild(1);
+            if (UIManager.CompletedLevels.Contains(i)) checkmark.gameObject.SetActive(true);
 
             levelButton.GetComponent<Button>().onClick.AddListener(() =>
             {

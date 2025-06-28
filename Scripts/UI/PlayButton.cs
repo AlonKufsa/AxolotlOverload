@@ -16,9 +16,8 @@ public class PlayButton : MonoBehaviour
     public void OnClick()
     {
         TextAsset[] levels = Resources.LoadAll<TextAsset>("Levels");
-
-        UIManager.CurrentLevelIndex = 0;
-        UIManager.CurrentLevelName = levels[0].name;
+        
+        UIManager.CurrentLevelName = levels[UIManager.CurrentLevelIndex].name;
         
         SceneManager.LoadScene(1);
     }

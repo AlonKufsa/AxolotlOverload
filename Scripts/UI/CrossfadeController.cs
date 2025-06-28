@@ -34,6 +34,7 @@ public class CrossfadeController : MonoBehaviour
     private void OnPlayerReachedDoor()
     {
         isLoading = true;
+        UIManager.CompletedLevels.Add(UIManager.CurrentLevelIndex);
         StartCoroutine(LoadLevel(true));
     }
 
@@ -42,17 +43,24 @@ public class CrossfadeController : MonoBehaviour
         OnCrossfadeStarted?.Invoke();
         animator.SetTrigger("TrSwitchScene");
         
+        DoorElement.OnPlayerReachedDoor -= OnPlayerReachedDoor;
+        
         yield return new WaitForSeconds(1f);
         
         TextAsset[] levels = Resources.LoadAll<TextAsset>("Levels");
         
-        if (incrementLevel && levels.Length != UIManager.CurrentLevelIndex + 1)
+        if (levels.Length != UIManager.CurrentLevelIndex + 1)
         {
-            UIManager.CurrentLevelIndex += 1;
-            UIManager.CurrentLevelName = levels[UIManager.CurrentLevelIndex].name;
+            if (incrementLevel)
+            {
+                UIManager.CurrentLevelIndex += 1;
+                UIManager.CurrentLevelName = levels[UIManager.CurrentLevelIndex].name;
+            }
+            SceneManager.LoadScene(1, LoadSceneMode.Single);
+            yield break;
         }
 
-        SceneManager.LoadScene(1);
+        // TODO: Win screen
     }
 
     private void OnDestroy()
