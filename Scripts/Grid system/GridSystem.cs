@@ -11,7 +11,7 @@ public class GridSystem
         this.zLength = zLength;
     }
 
-    public static Vector3 GetPositionAtCoordinates(Vector2 coordinates)
+    public static Vector3 GetPositionAtCoordinates(Vector2Int coordinates)
     {
         return new Vector3(coordinates.x * GameConstants.TileSize + (0.5f * GameConstants.TileSize), 0f, coordinates.y * GameConstants.TileSize  + (0.5f * GameConstants.TileSize));
     }

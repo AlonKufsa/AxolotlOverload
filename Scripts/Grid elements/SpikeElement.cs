@@ -19,12 +19,12 @@ public class SpikeElement : GridElement
         return false;
     }
 
-    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2 From)
+    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2Int From)
     {
         gridManager.KillPlayer(playerScript);
     }
 
-    public override void OnPlayerExit(PlayerMovement playerScript, Vector2 To)
+    public override void OnPlayerExit(PlayerMovement playerScript, Vector2Int To)
     {
         
     }

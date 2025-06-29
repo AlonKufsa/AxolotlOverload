@@ -19,12 +19,12 @@ public class WallElement : GridElement
         return true;
     }
 
-    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2 From)
+    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2Int From)
     {
         
     }
 
-    public override void OnPlayerExit(PlayerMovement playerScript, Vector2 To)
+    public override void OnPlayerExit(PlayerMovement playerScript, Vector2Int To)
     {
         
     }

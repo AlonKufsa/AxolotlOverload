@@ -19,12 +19,12 @@ public class TestElement : GridElement
         return false;
     }
 
-    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2 From)
+    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2Int From)
     {
         Debug.Log("I was entered");
     }
 
-    public override void OnPlayerExit(PlayerMovement playerScript, Vector2 To)
+    public override void OnPlayerExit(PlayerMovement playerScript, Vector2Int To)
     {
         Debug.Log("I was exited");
     }

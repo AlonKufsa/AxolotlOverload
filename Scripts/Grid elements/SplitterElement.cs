@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,7 +12,7 @@ public enum SplitterMode
 
 public class SplitterElement : GridElement
 {
-    [SerializeField] private SplitterMode splitterMode = SplitterMode.Both;
+    public SplitterMode splitterMode = SplitterMode.Both;
     
     public override bool GetIsWalkabilityDependant()
     {
@@ -28,7 +29,7 @@ public class SplitterElement : GridElement
         return false;
     }
 
-    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2 From)
+    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2Int From)
     {
         if (!playerScript.isSmall)
         {
@@ -41,23 +42,23 @@ public class SplitterElement : GridElement
         gridManager.KillPlayer(playerScript);
     }
 
-    public override void OnPlayerExit(PlayerMovement playerScript, Vector2 To)
+    public override void OnPlayerExit(PlayerMovement playerScript, Vector2Int To)
     {
         
     }
     
-    public List<Vector2> GetPositionsToSplitTo(Vector2 originalPosition)
+    public List<Vector2Int> GetPositionsToSplitTo(Vector2Int originalPosition)
     {
-        var list = new List<Vector2>();
+        var list = new List<Vector2Int>();
 
-        if (splitterMode == SplitterMode.Vertical || (splitterMode == SplitterMode.Both && Mathf.Approximately(originalPosition.x, Position.x)))
+        if (splitterMode == SplitterMode.Vertical || (splitterMode == SplitterMode.Both && Position.x == originalPosition.x))
         {
-            list.Add(Position - new Vector2(1, 0));
-            list.Add(Position + new Vector2(1, 0));
-        } else if (splitterMode == SplitterMode.Horizontal || (splitterMode == SplitterMode.Both && Mathf.Approximately(originalPosition.y, Position.y)))
+            list.Add(Position - new Vector2Int(1, 0));
+            list.Add(Position + new Vector2Int(1, 0));
+        } else if (splitterMode == SplitterMode.Horizontal || (splitterMode == SplitterMode.Both && Position.y == originalPosition.y))
         {
-            list.Add(Position - new Vector2(0, 1));
-            list.Add(Position + new Vector2(0, 1));
+            list.Add(Position - new Vector2Int(0, 1));
+            list.Add(Position + new Vector2Int(0, 1));
         }
 
         return list;

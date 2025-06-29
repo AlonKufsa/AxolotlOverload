@@ -3,22 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class GridManager : MonoBehaviour
 {
-    public static GridManager Instance { get; private set; }
-
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Debug.LogWarning("Duplicate GridManager detected, destroying!");
-            Destroy(gameObject);
-            return;
-        }
-
-        Instance = this;
-    }
+    public static event Action OnLevelFinished;
+    public static event Action OnLevelRestarted;
     
     [SerializeField] private GameObject darkTilePrefab;
     [SerializeField] private GameObject brightTilePrefab;
@@ -30,7 +20,6 @@ public class GridManager : MonoBehaviour
     [SerializeField] private SplitterElement BothSplitterGridElementPrefab;
     [SerializeField] private SplitterElement HorizontalSplitterGridElementPrefab;
     [SerializeField] private SplitterElement VerticalSplitterGridElementPrefab;
-    [SerializeField] private ButtonElement buttonGridElementPrefab;
     [SerializeField] private DoorElement doorGridElementPrefab;
 
     
@@ -38,7 +27,7 @@ public class GridManager : MonoBehaviour
 
     private GridSystem grid;
 
-    private Dictionary<Vector2, GridElement> gridElements = new Dictionary<Vector2, GridElement>();
+    private Dictionary<Vector2Int, GridElement> gridElements = new Dictionary<Vector2Int, GridElement>();
     private List<PlayerMovement> playerControllers = new List<PlayerMovement>();
     
     private List<MoveIntent> moveIntents = new List<MoveIntent>();
@@ -53,7 +42,6 @@ public class GridManager : MonoBehaviour
         charGridElements = new Dictionary<char, GridElement>()
         {
             {'D', doorGridElementPrefab},
-            {'B', buttonGridElementPrefab},
             {'X', spikeGridElementPrefab},
             {'#', wallGridElementPrefab},
             {'G', growGridElementPrefab},
@@ -64,13 +52,10 @@ public class GridManager : MonoBehaviour
         LoadLevel(UIManager.CurrentLevelName);
         
         PositionCamera();
-        
-        CrossfadeController.OnCrossfadeStarted += OnCrossfadeStarted;
     }
 
     private void OnDestroy()
     {
-        CrossfadeController.OnCrossfadeStarted -= OnCrossfadeStarted;
         PlayerMovement.OnPlayerMoved -= OnPlayerMoved;
     }
 
@@ -120,12 +105,12 @@ public class GridManager : MonoBehaviour
             {
                 if (x % 2 == z % 2)
                 {
-                    GameObject tile = Instantiate(darkTilePrefab, GridSystem.GetPositionAtCoordinates(new Vector2(x, z)), Quaternion.identity);
+                    GameObject tile = Instantiate(darkTilePrefab, GridSystem.GetPositionAtCoordinates(new Vector2Int(x, z)), Quaternion.identity);
                     tile.transform.localScale = new Vector3(GameConstants.TileSize, 1f, GameConstants.TileSize);
                 }
                 else
                 {
-                    GameObject tile = Instantiate(brightTilePrefab, GridSystem.GetPositionAtCoordinates(new Vector2(x, z)), Quaternion.identity);
+                    GameObject tile = Instantiate(brightTilePrefab, GridSystem.GetPositionAtCoordinates(new Vector2Int(x, z)), Quaternion.identity);
                     tile.transform.localScale = new Vector3(GameConstants.TileSize, 1f, GameConstants.TileSize);
                 }
             }
@@ -137,19 +122,19 @@ public class GridManager : MonoBehaviour
         cameraTransform.position = new Vector3((grid.xLength * GameConstants.TileSize)/2f, cameraTransform.position.y, (grid.zLength * GameConstants.TileSize)/2f);
     }
 
-    private void PlaceGameObjectOnGrid(GameObject obj, Vector2 gridPosition)
+    private void PlaceGameObjectOnGrid(GameObject obj, Vector2Int gridPosition)
     {
         obj.transform.localScale *= GameConstants.TileSize;
         obj.transform.position = GridSystem.GetPositionAtCoordinates(gridPosition) + Vector3.up * ((2 * obj.transform.position.y * GameConstants.TileSize - GameConstants.TileSize + 1) / 2f);
     }
     
-    private bool GetGridElementAt(Vector2 gridPosition, out GridElement gridElement)
+    private bool GetGridElementAt(Vector2Int gridPosition, out GridElement gridElement)
     {
         return gridElements.TryGetValue(gridPosition, out gridElement);
     }
     
     // Prefab must have a script deriving from GridElement!!!
-    private void AddGridElement(GridElement gridElementPrefab, Vector2 gridPosition)
+    private void AddGridElement(GridElement gridElementPrefab, Vector2Int gridPosition)
     {
         gridElements.Add(gridPosition, Instantiate(gridElementPrefab));
         PlaceGameObjectOnGrid(gridElements.Last().Value.gameObject, gridPosition);
@@ -157,7 +142,7 @@ public class GridManager : MonoBehaviour
         gridElements.Last().Value.Position = gridPosition;
     }
     
-    public void AddPlayer(Vector2 gridPosition, bool isSmall)
+    public void AddPlayer(Vector2Int gridPosition, bool isSmall)
     {
         playerControllers.Add(Instantiate(playerPrefab));
         PlaceGameObjectOnGrid(playerControllers.Last().gameObject, gridPosition);
@@ -235,7 +220,7 @@ public class GridManager : MonoBehaviour
         var validMoveIntents = new List<MoveIntent>();
         var invalidMoveIntents = new List<MoveIntent>();
 
-        var occupiedPositions = new List<Vector2>();
+        var occupiedPositions = new List<Vector2Int>();
         
         foreach (var intent in moveIntents)
         {
@@ -257,7 +242,14 @@ public class GridManager : MonoBehaviour
         {
             var moveIntentsGoingIn = validMoveIntents.Where(moveIntent => moveIntent.To == splitterElement.Position).ToList();
             if (moveIntentsGoingIn.Count == 0) continue;
-            
+
+            if ((splitterElement.splitterMode == SplitterMode.Vertical && moveIntentsGoingIn[0].From.y == splitterElement.Position.y) ||
+                (splitterElement.splitterMode == SplitterMode.Horizontal && moveIntentsGoingIn[0].From.x == splitterElement.Position.x))
+            {
+                validMoveIntents.RemoveAll(intent => intent.To == splitterElement.Position);
+                invalidMoveIntents.Add(moveIntentsGoingIn[0]);
+                continue;
+            }
             
             var splitPositions = splitterElement.GetPositionsToSplitTo(moveIntentsGoingIn[0].From);
             if (occupiedPositions.Any(position => splitPositions.Contains(position)))
@@ -276,82 +268,23 @@ public class GridManager : MonoBehaviour
         while (occupiedPositions.Distinct().Count() != occupiedPositions.Count && safety < 100)
         {
             safety++;
-            List<Vector2> duplicatePositions = new List<Vector2>();
-            HashSet<Vector2> occupiedPositionsSet = new HashSet<Vector2>();
+            List<Vector2Int> duplicatePositions = new List<Vector2Int>();
+            HashSet<Vector2Int> occupiedPositionsSet = new HashSet<Vector2Int>();
             foreach (var position in occupiedPositions)
             {
                 if (!occupiedPositionsSet.Add(position)) duplicatePositions.Add(position);
             }
-            //occupiedPositions.AddRange(validMoveIntents.Where(intent => duplicatePositions.Contains(intent.To)).ToList().Select(intent => intent.From).ToList());
             invalidMoveIntents.AddRange(validMoveIntents.Where(intent => duplicatePositions.Contains(intent.To)));
             validMoveIntents.RemoveAll(intent => duplicatePositions.Contains(intent.To));
             occupiedPositions.Clear();
             occupiedPositions.AddRange(validMoveIntents.Select(intent => intent.To));
             occupiedPositions.AddRange(invalidMoveIntents.Select(intent => intent.From));
         }
-
-
-        var allButtonsPressed = true;
-        foreach (var button in gridElements.Values.OfType<ButtonElement>())
-        {
-            if (!occupiedPositions.Contains(button.Position))
-            {
-                button.ReleaseButton();
-                allButtonsPressed = false;
-            }
-            else
-            {
-                button.PressButton();
-            }
-        }
-
-        if (allButtonsPressed)
-        {
-            foreach (var door in gridElements.Values.OfType<DoorElement>())
-            {
-                door.OpenDoor();
-            }
-        }
-        else
-        {
-            foreach (var door in gridElements.Values.OfType<DoorElement>())
-            {
-                door.CloseDoor();
-                if (validMoveIntents.Any(intent => intent.To == door.Position))
-                {
-                    invalidMoveIntents.AddRange(validMoveIntents.Where(intent => intent.To == door.Position));
-                    validMoveIntents.RemoveAll(intent => intent.To == door.Position);
-                    
-                    occupiedPositions.Clear();
-                    occupiedPositions.AddRange(validMoveIntents.Select(intent => intent.To));
-                    occupiedPositions.AddRange(invalidMoveIntents.Select(intent => intent.From));
-                    
-                    // Check if 2 players will collide
-                    safety = 0;
-                    while (occupiedPositions.Distinct().Count() != occupiedPositions.Count && safety < 100)
-                    {
-                        safety++;
-                        List<Vector2> duplicatePositions = new List<Vector2>();
-                        HashSet<Vector2> occupiedPositionsSet = new HashSet<Vector2>();
-                        foreach (var position in occupiedPositions)
-                        {
-                            if (!occupiedPositionsSet.Add(position)) duplicatePositions.Add(position);
-                        }
-                        //occupiedPositions.AddRange(validMoveIntents.Where(intent => duplicatePositions.Contains(intent.To)).ToList().Select(intent => intent.From).ToList());
-                        invalidMoveIntents.AddRange(validMoveIntents.Where(intent => duplicatePositions.Contains(intent.To)));
-                        validMoveIntents.RemoveAll(intent => duplicatePositions.Contains(intent.To));
-                        occupiedPositions.Clear();
-                        occupiedPositions.AddRange(validMoveIntents.Select(intent => intent.To));
-                        occupiedPositions.AddRange(invalidMoveIntents.Select(intent => intent.From));
-                    }
-                }
-            }
-        }
         
         moveIntents = validMoveIntents;
     }
 
-    private void OnPlayerMoved(Vector2 newCoordinates, Vector2 previousCoordinates, PlayerMovement player)
+    private void OnPlayerMoved(Vector2Int newCoordinates, Vector2Int previousCoordinates, PlayerMovement player)
     {
         GridElement gridElementAtPreviousLocation;
         GridElement gridElementAtNewLocation;
@@ -365,9 +298,16 @@ public class GridManager : MonoBehaviour
         if (hasPrevious) gridElementAtPreviousLocation?.OnPlayerExit(player, newCoordinates);
     }
 
-    private void OnCrossfadeStarted()
+    private void FinishLevel()
+    {
+        OnLevelFinished?.Invoke();
+        isLevelFinished = true;
+    }
+
+    private void RestartLevel()
     {
         isLevelFinished = true;
+        OnLevelRestarted?.Invoke();
     }
 
     private void Update()
@@ -394,6 +334,28 @@ public class GridManager : MonoBehaviour
             }
 
             ClearMoveIntents();
+
+            bool allDoorsSteppedOn = true;
+            foreach (var door in gridElements.Values.OfType<DoorElement>())
+            {
+                bool isSteppedOn = playerControllers.Any(player => player.GetPlayerPositionOnGrid() == door.Position);
+                if (isSteppedOn)
+                {
+                    door.WhenDoorSteppedOn();
+                }
+                else
+                {
+                    allDoorsSteppedOn = false;
+                    door.WhenDoorNotSteppedOn();
+                }
+            }
+            if (allDoorsSteppedOn) FinishLevel();
+            
+            var keyboard = Keyboard.current;
+            if (keyboard.rKey.wasPressedThisFrame || playerControllers.Count == 0)
+            {
+                RestartLevel();
+            }
         }
     }
 }

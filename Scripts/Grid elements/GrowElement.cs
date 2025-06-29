@@ -19,7 +19,7 @@ public class GrowElement : GridElement
         return false;
     }
 
-    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2 From)
+    public override void OnPlayerEnter(PlayerMovement playerScript, Vector2Int From)
     {
         if (playerScript.isSmall)
         {
@@ -27,7 +27,7 @@ public class GrowElement : GridElement
         }
     }
 
-    public override void OnPlayerExit(PlayerMovement playerScript, Vector2 To)
+    public override void OnPlayerExit(PlayerMovement playerScript, Vector2Int To)
     {
         
     }

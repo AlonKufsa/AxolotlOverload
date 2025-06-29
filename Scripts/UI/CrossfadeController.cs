@@ -6,9 +6,8 @@ using UnityEngine.SceneManagement;
 
 public class CrossfadeController : MonoBehaviour
 {
-    public static event Action OnCrossfadeStarted;
-    
     private Animator animator;
+    [SerializeField] private GameObject winScreen;
     
     private bool isLoading = false;
 
@@ -16,22 +15,20 @@ public class CrossfadeController : MonoBehaviour
     {
         animator = GetComponent<Animator>();
         
-        DoorElement.OnPlayerReachedDoor += OnPlayerReachedDoor;
+        GridManager.OnLevelFinished += OnLevelFinished;
+        GridManager.OnLevelRestarted += OnLevelRestarted;
     }
 
-    private void Update()
+    private void OnLevelRestarted()
     {
-        var keyboard = Keyboard.current;
-        if (keyboard.rKey.wasPressedThisFrame)
+        if (!isLoading)
         {
-            if (!isLoading)
-            {
-                StartCoroutine(LoadLevel(false));
-            }
+            StartCoroutine(LoadLevel(false));
         }
+        
     }
 
-    private void OnPlayerReachedDoor()
+    private void OnLevelFinished()
     {
         isLoading = true;
         UIManager.CompletedLevels.Add(UIManager.CurrentLevelIndex);
@@ -40,14 +37,22 @@ public class CrossfadeController : MonoBehaviour
 
     IEnumerator LoadLevel(bool incrementLevel)
     {
-        OnCrossfadeStarted?.Invoke();
+        TextAsset[] levels = Resources.LoadAll<TextAsset>("Levels");
+
+        if (incrementLevel && levels.Length == UIManager.CurrentLevelIndex + 1)
+        {
+            winScreen.SetActive(true);
+            
+            yield break;
+        }
+        
         animator.SetTrigger("TrSwitchScene");
         
-        DoorElement.OnPlayerReachedDoor -= OnPlayerReachedDoor;
+        GridManager.OnLevelFinished -= OnLevelFinished;
+        GridManager.OnLevelRestarted -= OnLevelRestarted;
         
         yield return new WaitForSeconds(1f);
         
-        TextAsset[] levels = Resources.LoadAll<TextAsset>("Levels");
         
         if (levels.Length != UIManager.CurrentLevelIndex + 1)
         {
@@ -65,6 +70,7 @@ public class CrossfadeController : MonoBehaviour
 
     private void OnDestroy()
     {
-        DoorElement.OnPlayerReachedDoor -= OnPlayerReachedDoor;
+        GridManager.OnLevelFinished -= OnLevelFinished;
+        GridManager.OnLevelRestarted -= OnLevelRestarted;
     }
 }

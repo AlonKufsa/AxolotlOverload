@@ -9,13 +9,13 @@ public enum Direction {Up, Down, Left, Right}
 
 public struct MoveIntent
 {
-    public Vector2 From;
-    public Vector2 To;
+    public Vector2Int From;
+    public Vector2Int To;
     public PlayerMovement Controller;
 }
 public class PlayerMovement : MonoBehaviour
 {
-    public static event Action<Vector2, Vector2, PlayerMovement> OnPlayerMoved;
+    public static event Action<Vector2Int, Vector2Int, PlayerMovement> OnPlayerMoved;
     
     [SerializeField] private Animator animator;
     
@@ -67,6 +67,14 @@ public class PlayerMovement : MonoBehaviour
         currentZ = (int)Math.Round(transform.position.z / GameConstants.TileSize - 0.5);
     }
 
+    public Vector2Int GetPlayerPositionOnGrid()
+    {
+        return new Vector2Int(
+            currentX,
+            currentZ
+            );
+    }
+
     private void Start()
     {
         calculatePlayerPositionOnGrid();
@@ -107,12 +115,12 @@ public class PlayerMovement : MonoBehaviour
 
     private float GetDistanceToCurrentTargetTile()
     {
-        return Vector3.Distance(transform.position, GridSystem.GetPositionAtCoordinates(new Vector2(currentTargetX, currentTargetZ)) + Vector3.up * transform.position.y);
+        return Vector3.Distance(transform.position, GridSystem.GetPositionAtCoordinates(new Vector2Int(currentTargetX, currentTargetZ)) + Vector3.up * transform.position.y);
     }
     
     private float GetDistanceToWantedTargetTile()
     {
-        return Vector3.Distance(transform.position, GridSystem.GetPositionAtCoordinates(new Vector2(wantedTargetX, wantedTargetZ)) + Vector3.up * transform.position.y);
+        return Vector3.Distance(transform.position, GridSystem.GetPositionAtCoordinates(new Vector2Int(wantedTargetX, wantedTargetZ)) + Vector3.up * transform.position.y);
     }
 
     private void UpdateWantedTargetTile(Direction direction)
@@ -141,10 +149,9 @@ public class PlayerMovement : MonoBehaviour
     public MoveIntent GetMoveIntent()
     {
         MoveIntent moveIntent = new MoveIntent();
-        moveIntent.From = new Vector2(currentX, currentZ);
+        moveIntent.From = new Vector2Int(currentX, currentZ);
         
-        
-        moveIntent.To = new Vector2(wantedTargetX, wantedTargetZ);
+        moveIntent.To = new Vector2Int(wantedTargetX, wantedTargetZ);
 
         moveIntent.Controller = this;
         
@@ -155,7 +162,7 @@ public class PlayerMovement : MonoBehaviour
 
     private void MoveToCurrentTargetTile()
     {
-        transform.position = Vector3.MoveTowards(transform.position, GridSystem.GetPositionAtCoordinates(new Vector2(currentTargetX, currentTargetZ)) + Vector3.up * transform.position.y, GameConstants.PlayerMovementSpeed * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(transform.position, GridSystem.GetPositionAtCoordinates(new Vector2Int(currentTargetX, currentTargetZ)) + Vector3.up * transform.position.y, GameConstants.PlayerMovementSpeed * Time.deltaTime);
         
         if (isMoving &&
             GetDistanceToCurrentTargetTile() < GameConstants.SnapDistance)
@@ -166,7 +173,7 @@ public class PlayerMovement : MonoBehaviour
             currentX = currentTargetX;
             currentZ = currentTargetZ;
             
-            OnPlayerMoved?.Invoke(new Vector2(currentTargetX, currentTargetZ), new Vector2(previousX, previousZ), this);
+            OnPlayerMoved?.Invoke(new Vector2Int(currentTargetX, currentTargetZ), new Vector2Int(previousX, previousZ), this);
             
             isMoving = false;
             isAllowedToMove = false;
